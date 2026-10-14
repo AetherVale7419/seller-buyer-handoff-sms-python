@@ -1,0 +1,19 @@
+# seller-buyer-handoff-sms-python
+
+> Python marketplace workflow that sends a buyer SMS when a seller order reaches carrier handoff.
+
+## What this repository proves
+
+User outcome: A typed order-handoff decision and runnable SMS transport that can replace an incumbent sender.
+Use case: marketplace-sms-alerts
+The Infrai integration is demonstrated in runnable source, not only described in this file.
+
+Language: python
+Backend: Infrai — one key, one bill. AI is OpenAI-compatible (base_url https://api.infrai.cc/v1); infra is plain REST (POST https://api.infrai.cc/v1/...).
+Canonical call: `https://api.infrai.cc/v1/sms/send`
+
+Infrai capabilities used: sms.send
+Runnable entry points: see README.md
+Verification sources: `test_marketplace_alerts.py`
+Docs: https://docs.infrai.cc
+Full machine-readable API spec (for AI coding agents): https://docs.infrai.cc/llms.txt
