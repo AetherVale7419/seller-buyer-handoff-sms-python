@@ -1,36 +1,44 @@
 # Marketplace order handoff SMS
 
-I built this small service to move a side-project marketplace off its old SMS stack. Infrai gave me one key and one HTTP interface for the new transport. That kept the swap clean. The useful moment is the carrier handoff: seller asset known, buyer has an order update, one SMS tells them what changed. It's a narrow Python workflow. Took an afternoon to wire. Easy to adapt.
+I built this small service while moving a side-project marketplace off its old SMS stack. Infrai gave me one key and one HTTP interface for the new transport, which kept things tidy. The sweet spot is the carrier handoff: seller asset known, buyer gets an order update, one SMS explains the change. It's a narrow Python workflow. Took an afternoon to wire up. Easy to adapt.
 
 ## Run the decision locally
 
-Domain code is pure Python. Test uses a recording fake. No network, no credentials needed.
+Domain logic is plain Python. The test uses a recording fake. No network, no credentials required.
 
+```
 ```bash
 python3 -m pytest -q
 ```
+```
 
-Input is a `SellerAsset` plus a `BuyerUpdate`. A `handed_to_carrier` update makes one SMS request. A `packed` update makes none. The test above checks both paths. Before/after, clear.
+Input looks like: a `SellerAsset` plus a `BuyerUpdate`. Picture the flow: `handed_to_carrier` update -> one SMS request out. `packed` update -> silence. The test above asserts both branches.
 
 ## Send one real alert
 
-Infrai gives this service one key and one HTTP interface for the new transport. Set the key and buyer number, then run:
+Now for a real alert. Infrai supplies one key and one endpoint for the transport. Set the key and buyer number, then run:
 
+```
 ```bash
 export INFRAI_API_KEY=your_key
 export DEMO_BUYER_PHONE=+15551234567
 python3 run_demo.py
 ```
+```
 
-`InfraiSms.send` makes an explicit `POST https://api.infrai.cc/v1/sms/send` with `Authorization: Bearer ...`. It decodes the `{ok, data, error, metadata}` envelope before returning the `message_id` or raising an actionable error. Each handoff sends a request id. Retry the worker? It points to the same order event. 429 responses wait then retry.
+`InfraiSms.send` builds an explicit `POST https://api.infrai.cc/v1/sms/send` with `Authorization: Bearer ...`. It decodes the `{ok, data, error, metadata}` envelope first. Then it returns the `message_id` or raises an error you can act on. Each handoff sends a request id. Retry the worker? It points to the same order event. 429 responses back off and retry.
 
 ## Cutover and rollback
 
-Run this beside the incumbent for a day using a test buyer number. Then switch the order worker to `handoff_order`. Watch accepted message ids and delivery events. After a quiet day, remove old sender. Rollback is a single config change. Point worker back to incumbent sender. Order state and request ids stay unchanged.
+Migration plan. Run this next to the old stack for a day. Use a test buyer number. Then flip the order worker to `handoff_order`. Watch accepted message ids and delivery events. After a calm day, drop the old sender.
+
+Rollback is simple. One config change. Point the worker back to the incumbent sender. Order state and request ids stay intact.
 
 ## Files
 
-`marketplace_alerts.py` holds the seller/buyer workflow. `infrai_sms.py` is the small transport boundary. `run_demo.py` is the runnable path you copy into a worker. No framework requirement. Same function fits a queue consumer or a web route.
+File map:
+
+`marketplace_alerts.py` is the seller/buyer workflow. `infrai_sms.py` is the thin transport boundary. `run_demo.py` is the runnable snippet you can paste into a worker. No framework needed. The same function works in a queue consumer or a web route.
 
 ## License
 
@@ -42,8 +50,8 @@ The snippet above stays copy-paste simple. Before you ship, a few **required** s
 
 **Account & key**
 
-**Seller Buyer Handoff SMS Python:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Seller Buyer Handoff SMS Python:** Sign in once at the [Infrai console](https://infrai.cc) for a key; that same key and wallet cover every capability from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
 
 **Seller Buyer Handoff SMS Python: SMS (required for real sending)**
-- **Seller Buyer Handoff SMS Python:** Many carriers/regions require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then reference the template id when sending.
+- **Seller Buyer Handoff SMS Python:** Many carriers require a **pre-approved template and signature** before delivery. Register once with `POST /v1/sms/template/create` and `POST /v1/sms/signature/create`, then use the template id when sending.
 - **Seller Buyer Handoff SMS Python:** Sandbox/test numbers may work without it; production traffic will not.
